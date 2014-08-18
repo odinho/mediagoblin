@@ -21,21 +21,24 @@ import json
 from mediagoblin import messages, mg_globals
 from mediagoblin.db.models import (MediaEntry, MediaTag, Collection,
                                    CollectionItem, User)
-from mediagoblin.tools.response import render_to_response, render_404, \
-    redirect, redirect_obj
+from mediagoblin.tools.response import (render_to_response, render_404,
+                                        redirect, redirect_obj)
 from mediagoblin.tools.text import cleaned_markdown_conversion
 from mediagoblin.tools.translate import pass_to_ugettext as _
 from mediagoblin.tools.pagination import Pagination
 from mediagoblin.user_pages import forms as user_forms
-from mediagoblin.user_pages.lib import (send_comment_email,
-	add_media_to_collection, build_report_object)
-from mediagoblin.notifications import trigger_notification, \
-    add_comment_subscription, mark_comment_notification_seen
+from mediagoblin.user_pages.lib import (
+    add_media_to_collection, build_report_object,
+    remove_collection_item)
+from mediagoblin.notifications import (
+    trigger_notification, add_comment_subscription,
+    mark_comment_notification_seen)
 from mediagoblin.tools.pluginapi import hook_transform
 
-from mediagoblin.decorators import (uses_pagination, get_user_media_entry,
-    get_media_entry_by_id, user_has_privilege, user_not_banned,
-    require_active_login, user_may_delete_media, user_may_alter_collection,
+from mediagoblin.decorators import (
+    uses_pagination, get_user_media_entry, get_media_entry_by_id,
+    user_has_privilege, user_not_banned, require_active_login,
+    user_may_delete_media, user_may_alter_collection,
     get_user_collection, get_user_collection_item, active_user_from_url,
     get_optional_media_comment_by_id, allow_reporting)
 
@@ -394,16 +397,10 @@ def collection_item_confirm_remove(request, collection_item):
     form = user_forms.ConfirmCollectionItemRemoveForm(request.form)
 
     if request.method == 'POST' and form.validate():
-        username = collection_item.in_collection.get_creator.username
         collection = collection_item.in_collection
 
         if form.confirm.data is True:
-            entry = collection_item.get_media_entry
-            entry.save()
-
-            collection_item.delete()
-            collection.items = collection.items - 1
-            collection.save()
+            remove_collection_item(collection_item)
 
             messages.add_message(
                 request, messages.SUCCESS, _('You deleted the item from the collection.'))
@@ -444,9 +441,7 @@ def collection_confirm_delete(request, collection):
 
             # Delete all the associated collection items
             for item in collection.get_collection_items():
-                entry = item.get_media_entry
-                entry.save()
-                item.delete()
+                remove_collection_item(item)
 
             collection.delete()
             messages.add_message(request, messages.SUCCESS,
