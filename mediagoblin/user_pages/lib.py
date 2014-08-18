@@ -79,6 +79,19 @@ def add_media_to_collection(collection, media, note=None, commit=True):
         Session.commit()
 
 
+def remove_collection_item(collection_item, commit=True):
+    collection = collection_item.in_collection
+
+    collection.items = collection.items - 1
+    Session.delete(collection_item)
+    Session.add(collection)
+
+    hook_runall('collection_remove_media', collection_item=collection_item)
+
+    if commit:
+        Session.commit()
+
+
 def build_report_object(report_form, media_entry=None, comment=None):
     """
     This function is used to convert a form object (from a User filing a
